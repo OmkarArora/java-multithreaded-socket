@@ -3,6 +3,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Scanner;
 import java.util.concurrent.locks.ReentrantLock;
 
 class BankAccount {
@@ -22,6 +23,9 @@ public class Server {
 	static int sleepTime = 2000;
 
 	public static void main(String args[]) {
+		Scanner sc = new Scanner(System.in);
+		System.out.println("Choose Approach:\n1. Un-Sync\n2. Synchronized Keyword\n3. Reentrant Lock");
+		int approach = sc.nextInt();
 		try {
 			server = new ServerSocket(port);
 			while (true) {
@@ -32,17 +36,24 @@ public class Server {
 				DataInputStream dis = new DataInputStream(socket.getInputStream());
 				DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 
-				// Thread t = new ClientHandler(socket, dis, dos, account, sleepTime);
-				Thread t = new ClientHandlerUsingLock(socket, dis, dos, account, sleepTime, reentrantLock);
+				Thread t = null;
+				if (approach == 1) {
+					t = new ClientHandlerNoSync(socket, dis, dos, account, sleepTime);
+					sleepTime = 0;
+				} else if (approach == 2) {
+					t = new ClientHandler(socket, dis, dos, account, sleepTime);
+					if (sleepTime > 1000)
+						sleepTime -= 1000;
+					else
+						sleepTime += 1000;
+				} else {
+					t = new ClientHandlerUsingLock(socket, dis, dos, account, sleepTime, reentrantLock);
+					if (sleepTime > 1000)
+						sleepTime -= 1000;
+					else
+						sleepTime += 1000;
+				}
 
-				if (sleepTime > 1000)
-					sleepTime -= 1000;
-				else
-					sleepTime += 1000;
-
-				// Thread t = new ClientHandlerNoSync(socket, dis, dos, account, sleepTime);
-				// for unsync
-				// sleepTime = 0;
 				t.start();
 			}
 		} catch (Exception e) {
