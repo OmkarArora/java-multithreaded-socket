@@ -40,6 +40,7 @@ public class Server {
 				else
 					sleepTime += 1000;
 
+				// Thread t = new ClientHandlerNoSync(socket, dis, dos, account, sleepTime);
 				// for unsync
 				// sleepTime = 0;
 				t.start();
@@ -239,6 +240,93 @@ class ClientHandlerUsingLock extends Thread {
 			}
 		}
 		return "SERVER BUSY";
+	}
+}
 
+class ClientHandlerNoSync extends Thread {
+	final DataInputStream dis;
+	final DataOutputStream dos;
+	final Socket s;
+	BankAccount account;
+	int sleepTime;
+
+	public ClientHandlerNoSync(Socket s, DataInputStream dis, DataOutputStream dos, BankAccount account,
+			int sleepTime) {
+		this.s = s;
+		this.dis = dis;
+		this.dos = dos;
+		this.account = account;
+		this.sleepTime = sleepTime;
+	}
+
+	@Override
+	public void run() {
+		String received;
+		int amount = -99;
+		String msg = "";
+		while (true) {
+			try {
+				// Ask user what he wants
+				dos.writeUTF("1.withdraw\n2.deposit\n3.check balance\n4.exit");
+
+				// receive the answer from client
+				received = dis.readUTF();
+
+				switch (received) {
+				case "1":
+					dos.writeUTF("Enter amount: ");
+					amount = Integer.parseInt(dis.readUTF());
+					msg = performAction("withdraw", amount);
+					dos.writeUTF(msg);
+					break;
+				case "2":
+					dos.writeUTF("Enter amount: ");
+					amount = Integer.parseInt(dis.readUTF());
+					msg = performAction("deposit", amount);
+					dos.writeUTF(msg);
+					break;
+				case "3":
+					msg = performAction("check balance", -99);
+					dos.writeUTF(msg);
+					break;
+				case "4":
+					dos.writeUTF("exiting");
+					this.dis.close();
+					this.dos.close();
+					return;
+				default:
+					dos.writeUTF("Invalid input");
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public String performAction(String action, int amount) throws InterruptedException {
+		Thread.sleep(sleepTime);
+		String returnMsg = "";
+		switch (action) {
+		case "withdraw":
+			if (amount > account.balance)
+				returnMsg = "Insufficient balance";
+			else {
+				account.balance = account.balance - amount;
+				returnMsg = "Withdrawn: Rs" + amount;
+			}
+			break;
+		case "deposit":
+			account.balance += amount;
+			returnMsg = "Deposited: Rs" + amount;
+			break;
+		case "check balance":
+			returnMsg = "Current Balance: Rs" + account.balance;
+			break;
+		default:
+			returnMsg = "SERVER ERROR";
+		}
+		return returnMsg;
 	}
 }
